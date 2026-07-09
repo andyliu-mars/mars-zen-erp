@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1a6dcc">
+<link rel="manifest" href="manifest.json">
+<script src="mock-api.js"></script>
+<title>MarsZen ERP App</title>
+<style>
+  :root {
+    --primary: #1a6dcc; --primary-dark: #12509a; --bg: #f2f4f8; --card: #fff;
+    --text: #1e2430; --muted: #7a8494; --border: #e3e7ee;
+    --success: #1d9d5f; --danger: #d64545; --warn: #d68b12;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  body { font-family: "PingFang TC","Microsoft JhengHei",system-ui,sans-serif; background: var(--bg); color: var(--text); max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 76px; }
+  header.nav { background: var(--primary); color: #fff; padding: 14px 16px; position: sticky; top: 0; z-index: 10; display: flex; justify-content: space-between; align-items: center; }
+  header.nav h1 { font-size: 17px; font-weight: 600; }
+  header.nav select { background: rgba(255,255,255,.18); color: #fff; border: none; border-radius: 8px; padding: 5px 8px; font-size: 13px; }
+  header.nav select option { color: #222; }
+  main { padding: 14px; }
+  .card { background: var(--card); border-radius: 14px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(20,30,50,.06); }
+  .card h2 { font-size: 15px; margin-bottom: 10px; }
+  .btn { display: block; width: 100%; padding: 14px; border: none; border-radius: 12px; background: var(--primary); color: #fff; font-size: 16px; font-weight: 600; cursor: pointer; }
+  .btn:disabled { background: #b8c2d0; cursor: not-allowed; }
+  .btn.outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+  .btn.danger { background: var(--danger); }
+  .btn.success { background: var(--success); }
+  .btn.sm { padding: 9px 12px; font-size: 14px; width: auto; display: inline-block; }
+  .row { display: flex; gap: 10px; }
+  .row > * { flex: 1; }
+  .field { margin-bottom: 12px; }
+  .field label { display: block; font-size: 13px; color: var(--muted); margin-bottom: 5px; }
+  .field label .req { color: var(--danger); }
+  .field input, .field select { width: 100%; padding: 11px 12px; border: 1.5px solid var(--border); border-radius: 10px; font-size: 15px; background: #fff; }
+  .field input:focus { outline: none; border-color: var(--primary); }
+  .field input.err { border-color: var(--danger); background: #fff6f6; }
+  .field .errmsg { color: var(--danger); font-size: 12px; margin-top: 4px; display: none; }
+  .status-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; padding: 6px 10px; border-radius: 999px; background: #eef1f6; margin: 0 6px 6px 0; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #b8c2d0; }
+  .dot.on { background: var(--success); } .dot.off { background: var(--danger); }
+  .hint { font-size: 12.5px; color: var(--muted); line-height: 1.5; }
+  .alert { border-radius: 10px; padding: 10px 12px; font-size: 13.5px; margin: 10px 0; display: none; }
+  .alert.error { background: #fdecec; color: #a83232; display: block; }
+  .alert.ok { background: #e6f6ee; color: #14764a; display: block; }
+  .alert.warn { background: #fcf3e2; color: #9a6408; display: block; }
+  .list-item { padding: 12px 0; border-bottom: 1px solid var(--border); }
+  .list-item:last-child { border-bottom: none; }
+  .list-item .t { font-size: 14.5px; font-weight: 500; }
+  .list-item .s { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .badge { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; }
+  .badge.pending { background: #fcf3e2; color: #9a6408; }
+  .badge.approved, .badge.success, .badge.booked { background: #e6f6ee; color: #14764a; }
+  .badge.rejected, .badge.abnormal { background: #fdecec; color: #a83232; }
+  .empty { text-align: center; color: var(--muted); padding: 36px 0; font-size: 14px; }
+  .empty .ico { font-size: 34px; margin-bottom: 8px; }
+  nav.tabbar { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 480px; background: #fff; border-top: 1px solid var(--border); display: flex; z-index: 10; padding-bottom: env(safe-area-inset-bottom); }
+  nav.tabbar button { flex: 1; background: none; border: none; padding: 9px 0 7px; font-size: 11.5px; color: var(--muted); cursor: pointer; }
+  nav.tabbar button .ico { display: block; font-size: 21px; margin-bottom: 2px; }
+  nav.tabbar button.active { color: var(--primary); font-weight: 600; }
+  .page { display: none; } .page.active { display: block; }
+  .shoot-zone { border: 2px dashed var(--border); border-radius: 14px; min-height: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; cursor: pointer; background: #fafbfd; overflow: hidden; position: relative; }
+  .shoot-zone img { width: 100%; max-height: 260px; object-fit: contain; }
+  .shoot-zone .cam { font-size: 42px; }
+  .spinner { width: 22px; height: 22px; border: 3px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: -5px; margin-right: 8px; }
+  .spinner.dark { border-color: #d6ddea; border-top-color: var(--primary); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .clock-big { text-align: center; padding: 8px 0 4px; }
+  .clock-big .time { font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .clock-big .date { color: var(--muted); font-size: 13.5px; margin-top: 2px; }
+  .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .kpi { background: var(--card); border-radius: 14px; padding: 14px; box-shadow: 0 1px 3px rgba(20,30,50,.06); }
+  .kpi .v { font-size: 22px; font-weight: 700; color: var(--primary); }
+  .kpi .l { font-size: 12px; color: var(--muted); margin-top: 2px; }
+  dialog { border: none; border-radius: 16px; padding: 20px; width: min(90vw, 380px); }
+  dialog::backdrop { background: rgba(15,22,35,.45); }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <h1 id="navTitle">MarsZen ERP</h1>
+  <select id="userSel" title="切換使用者（模擬登入）"></select>
+</header>
+
+<main>
+  <!-- ─── 首頁 ─── -->
+  <section class="page active" id="page-home">
+    <div class="kpis" id="homeKpis"></div>
+    <div class="card" style="margin-top:12px">
+      <h2>快速操作</h2>
+      <div class="row">
+        <button class="btn sm outline" onclick="go('clock')">立即打卡</button>
+        <button class="btn sm outline" onclick="go('expense')">拍發票報支</button>
+      </div>
+    </div>
+    <div class="card">
+      <h2>最近打卡紀錄</h2>
+      <div id="homeRecords"><div class="empty">載入中...</div></div>
+    </div>
+  </section>
+
+  <!-- ─── 人事打卡 ─── -->
+  <section class="page" id="page-clock">
+    <div class="card">
+      <div class="clock-big">
+        <div class="time" id="liveTime">--:--:--</div>
+        <div class="date" id="liveDate"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>定位狀態</h2>
+      <div>
+        <span class="status-chip"><span class="dot" id="gpsDot"></span>GPS：<span id="gpsTxt">未取得</span></span>
+        <span class="status-chip"><span class="dot" id="wifiDot"></span>Wi-Fi：<span id="wifiTxt">未取得</span></span>
+      </div>
+      <div class="alert" id="clockAlert"></div>
+      <p class="hint" id="clockHint">請先授權定位並偵測 Wi-Fi，兩者皆取得後才可打卡。</p>
+      <div class="row" style="margin-top:10px">
+        <button class="btn sm outline" id="btnLocate">📍 取得定位</button>
+        <button class="btn sm outline" id="btnWifi">📶 偵測 Wi-Fi</button>
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn" id="btnClockIn" disabled>上班打卡</button>
+      <button class="btn outline" id="btnClockOut" disabled>下班打卡</button>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <h2>我的打卡紀錄</h2>
+      <div id="clockRecords"><div class="empty">載入中...</div></div>
+    </div>
+  </section>
+
+  <!-- ─── 費用報支 (OCR) ─── -->
+  <section class="page" id="page-expense">
+    <div class="card">
+      <h2>新增費用報支</h2>
+      <input type="file" id="fileInput" accept="image/*" capture="environment" hidden>
+      <div class="shoot-zone" id="shootZone">
+        <span class="cam">📷</span>
+        <span style="font-weight:600">拍攝發票</span>
+        <span class="hint">或點擊從相簿選取</span>
+      </div>
+      <div class="alert" id="ocrAlert"></div>
+    </div>
+    <div class="card">
+      <h2>發票資訊</h2>
+      <div class="field">
+        <label>統一編號 <span class="req">*</span></label>
+        <input id="f-taxid" inputmode="numeric" maxlength="8" placeholder="8 碼數字">
+        <div class="errmsg">統一編號必填，須為 8 碼數字</div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>發票金額 <span class="req">*</span></label>
+          <input id="f-amount" inputmode="decimal" placeholder="含稅金額">
+          <div class="errmsg">金額必填，必須為數值</div>
+        </div>
+        <div class="field">
+          <label>稅額 <span class="req">*</span></label>
+          <input id="f-tax" inputmode="decimal" placeholder="稅額">
+          <div class="errmsg">稅額必填，必須為數值</div>
+        </div>
+      </div>
+      <div class="field">
+        <label>發票日期 <span class="req">*</span></label>
+        <input id="f-date" type="date">
+        <div class="errmsg">日期必填，須為有效日期</div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>費用類別</label>
+          <select id="f-category">
+            <option>交通費</option><option>交際費</option><option>文具用品</option>
+            <option>郵電費</option><option>雜項</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>發票號碼</label>
+          <input id="f-invno" placeholder="AB12345678">
+        </div>
+      </div>
+      <div class="field">
+        <label>備註</label>
+        <input id="f-note" placeholder="用途說明">
+      </div>
+    </div>
+    <button class="btn" id="btnSubmitExp">確認送出</button>
+  </section>
+
+  <!-- ─── 文件核准 ─── -->
+  <section class="page" id="page-approval">
+    <div class="card">
+      <h2>待簽核清單</h2>
+      <div id="approvalList"><div class="empty">載入中...</div></div>
+    </div>
+  </section>
+</main>
+
+<nav class="tabbar">
+  <button data-page="home" class="active"><span class="ico">🏠</span>首頁</button>
+  <button data-page="clock"><span class="ico">🕐</span>打卡</button>
+  <button data-page="expense"><span class="ico">🧾</span>報支</button>
+  <button data-page="approval"><span class="ico">✅</span>核准</button>
+</nav>
+
+<dialog id="dlgApproval">
+  <h3 id="dlgTitle" style="margin-bottom:10px;font-size:16px"></h3>
+  <div id="dlgBody" class="hint" style="font-size:13.5px;margin-bottom:14px"></div>
+  <div class="field"><label>簽核意見</label><input id="dlgComment" placeholder="選填"></div>
+  <div class="row">
+    <button class="btn sm success" id="dlgApprove">同意</button>
+    <button class="btn sm danger" id="dlgReject">拒絕</button>
+    <button class="btn sm outline" onclick="dlgApprovalEl.close()">取消</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const api = async (url, opt) => {
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(() => ({ success: false, message: '伺服器回應異常' }));
+  if (!r.ok || !j.success) throw new Error(j.message || '請求失敗');
+  return j.data;
+};
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ── 使用者（模擬登入） ── */
+let employees = [], me = null;
+async function initUsers() {
+  employees = await api('/api/hr/employees');
+  const sel = $('userSel');
+  sel.innerHTML = employees.map(e => `<option value="${e.id}">${e.name}（${e.title}）</option>`).join('');
+  sel.onchange = () => { me = employees.find(e => e.id === Number(sel.value)); refreshAll(); };
+  me = employees[0];
+}
+
+/* ── 分頁切換 ── */
+const titles = { home: 'MarsZen ERP', clock: '人事打卡', expense: '新增費用報支', approval: '文件核准' };
+function go(p) {
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  $('page-' + p).classList.add('active');
+  document.querySelectorAll('.tabbar button').forEach(b => b.classList.toggle('active', b.dataset.page === p));
+  $('navTitle').textContent = titles[p];
+  if (p === 'approval') loadApprovals();
+  if (p === 'clock') loadClockRecords();
+  if (p === 'home') loadHome();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('.tabbar button').forEach(b => b.onclick = () => go(b.dataset.page));
+
+/* ── 首頁 ── */
+async function loadHome() {
+  try {
+    const s = await api('/api/dashboard/summary');
+    $('homeKpis').innerHTML = `
+      <div class="kpi"><div class="v">${s.todayClockIns}</div><div class="l">今日已打卡</div></div>
+      <div class="kpi"><div class="v">${s.pendingApprovals}</div><div class="l">待簽核文件</div></div>
+      <div class="kpi"><div class="v">$${s.monthExpense.toLocaleString()}</div><div class="l">本月費用報支</div></div>
+      <div class="kpi"><div class="v">${s.activeEmployees}</div><div class="l">在職員工</div></div>`;
+    const recs = await api('/api/attendance/records?employeeId=' + me.id);
+    $('homeRecords').innerHTML = recs.length ? recs.slice(0, 3).map(recRow).join('') : '<div class="empty"><div class="ico">🕐</div>尚無打卡紀錄</div>';
+  } catch (e) { $('homeKpis').innerHTML = `<div class="kpi" style="grid-column:1/-1"><div class="l">${esc(e.message)}</div></div>`; }
+}
+const recRow = r => `<div class="list-item">
+  <div class="t">${r.type === 'in' ? '上班' : '下班'}打卡 <span class="badge ${r.result}">${r.result === 'success' ? '正常' : '異常'}</span></div>
+  <div class="s">${new Date(r.timestamp).toLocaleString('zh-TW')}｜距辦公室 ${r.distanceM ?? '-'}m${r.note ? '｜' + esc(r.note) : ''}</div>
+</div>`;
+
+/* ── 打卡 ── */
+let gps = null, wifi = null;
+setInterval(() => {
+  const n = new Date();
+  $('liveTime').textContent = n.toLocaleTimeString('zh-TW', { hour12: false });
+  $('liveDate').textContent = n.toLocaleDateString('zh-TW', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}, 250);
+
+function setClockState() {
+  const ready = !!(gps && wifi && wifi.ssid);
+  $('btnClockIn').disabled = !ready;
+  $('btnClockOut').disabled = !ready;
+  $('clockHint').textContent = ready ? '定位資訊已就緒，可進行打卡。' : '無法獲取定位資訊，請確認網路與位置服務已開啟。';
+}
+
+$('btnLocate').onclick = () => {
+  const a = $('clockAlert'); a.className = 'alert';
+  if (!navigator.geolocation) { a.className = 'alert error'; a.textContent = '此裝置不支援定位功能'; return; }
+  $('gpsTxt').textContent = '定位中...';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      gps = { lat: +pos.coords.latitude.toFixed(6), lng: +pos.coords.longitude.toFixed(6) };
+      $('gpsDot').className = 'dot on';
+      $('gpsTxt').textContent = `${gps.lat}, ${gps.lng}`;
+      setClockState();
+    },
+    err => {
+      gps = null; $('gpsDot').className = 'dot off'; $('gpsTxt').textContent = '取得失敗';
+      a.className = 'alert error';
+      a.textContent = err.code === 1
+        ? '定位權限遭拒。請至「設定 > 隱私權 > 定位服務」開啟本 App 的定位權限後重試。'
+        : '無法獲取定位資訊，請確認網路與位置服務已開啟。';
+      setClockState();
+    },
+    { enableHighAccuracy: true, timeout: 10000 }
+  );
+};
+
+// 瀏覽器無法直接讀取 SSID（原生 App 以 iOS NEHotspotNetwork / Android WifiManager 取得）
+// PWA 版以連線狀態 + 公司 Wi-Fi 模擬偵測代替
+$('btnWifi').onclick = () => {
+  const a = $('clockAlert'); a.className = 'alert';
+  $('wifiTxt').textContent = '偵測中...';
+  setTimeout(() => {
+    if (!navigator.onLine) {
+      wifi = null; $('wifiDot').className = 'dot off'; $('wifiTxt').textContent = '無網路連線';
+      a.className = 'alert error'; a.textContent = '無法獲取定位資訊，請確認網路與位置服務已開啟。';
+    } else {
+      wifi = { ssid: 'MARSZEN-OFFICE', bssid: 'A4:B1:C2:D3:E4:F5' };
+      $('wifiDot').className = 'dot on'; $('wifiTxt').textContent = wifi.ssid;
+    }
+    setClockState();
+  }, 700);
+};
+
+async function doClock(type) {
+  const a = $('clockAlert'); a.className = 'alert';
+  // 前端檢核：GPS 與 Wi-Fi 為空值時禁止呼叫 API
+  if (!gps || !wifi || !wifi.ssid) {
+    a.className = 'alert error'; a.textContent = '無法獲取定位資訊，請確認網路與位置服務已開啟。'; return;
+  }
+  const btn = type === 'in' ? $('btnClockIn') : $('btnClockOut');
+  btn.disabled = true;
+  try {
+    const r = await api('/api/attendance/clock-in', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ employeeId: me.id, gps, wifi, timestamp: new Date().toISOString(), type })
+    });
+    a.className = 'alert ' + (r.record.result === 'success' ? 'ok' : 'warn');
+    a.textContent = r.message;
+    loadClockRecords();
+  } catch (e) { a.className = 'alert error'; a.textContent = '打卡失敗：' + e.message; }
+  btn.disabled = false;
+}
+$('btnClockIn').onclick = () => doClock('in');
+$('btnClockOut').onclick = () => doClock('out');
+
+async function loadClockRecords() {
+  try {
+    const recs = await api('/api/attendance/records?employeeId=' + me.id);
+    $('clockRecords').innerHTML = recs.length ? recs.map(recRow).join('') : '<div class="empty"><div class="ico">🕐</div>尚無打卡紀錄</div>';
+  } catch (e) { $('clockRecords').innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+
+/* ── 費用報支 OCR ── */
+let ocrImageId = null, ocrBusy = false;
+$('shootZone').onclick = () => { if (!ocrBusy) $('fileInput').click(); };
+$('fileInput').onchange = async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const zone = $('shootZone'), a = $('ocrAlert'), btn = $('btnSubmitExp');
+  // 預覽照片
+  const url = URL.createObjectURL(file);
+  zone.innerHTML = `<img src="${url}" alt="發票照片">`;
+  // 鎖定送出、顯示 Loading
+  ocrBusy = true; btn.disabled = true;
+  a.className = 'alert warn'; a.innerHTML = '<span class="spinner dark"></span>發票辨識中，請稍候...';
+  try {
+    const fd = new FormData();
+    fd.append('image', file);
+    const r = await api('/api/finance/invoice-ocr', { method: 'POST', body: fd });
+    ocrImageId = r.imageId;
+    const f = r.fields;
+    // 自動填入表單欄位
+    if (f.taxIdSeller) $('f-taxid').value = f.taxIdSeller;
+    if (f.amount != null) $('f-amount').value = f.amount;
+    if (f.tax != null) $('f-tax').value = f.tax;
+    if (f.date) $('f-date').value = f.date;
+    if (f.invoiceNo) $('f-invno').value = f.invoiceNo;
+    a.className = 'alert ' + (r.partial ? 'warn' : 'ok');
+    a.textContent = r.message;
+  } catch (err) {
+    a.className = 'alert error';
+    a.textContent = '辨識失敗：' + err.message + '，請手動填寫或重新拍攝。';
+  }
+  ocrBusy = false; btn.disabled = false;
+  e.target.value = '';
+};
+
+function validateField(id, test, on) {
+  const el = $(id), bad = !test(el.value.trim());
+  el.classList.toggle('err', bad && on);
+  el.nextElementSibling && (el.nextElementSibling.style.display = bad && on ? 'block' : 'none');
+  return !bad;
+}
+function validateExpense(on = true) {
+  const v1 = validateField('f-taxid', v => /^\d{8}$/.test(v), on);
+  const v2 = validateField('f-amount', v => v !== '' && !isNaN(Number(v)) && Number(v) > 0, on);
+  const v3 = validateField('f-tax', v => v !== '' && !isNaN(Number(v)), on);
+  const v4 = validateField('f-date', v => v !== '' && !isNaN(Date.parse(v)), on);
+  return v1 && v2 && v3 && v4;
+}
+['f-taxid','f-amount','f-tax','f-date'].forEach(id => $(id).addEventListener('input', () => validateExpense(true)));
+
+$('btnSubmitExp').onclick = async () => {
+  const a = $('ocrAlert');
+  if (!validateExpense(true)) { a.className = 'alert error'; a.textContent = '請修正紅框欄位後再送出。'; return; }
+  const btn = $('btnSubmitExp');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>送出中...';
+  try {
+    await api('/api/finance/expenses', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        employeeId: me.id,
+        taxIdSeller: $('f-taxid').value.trim(),
+        invoiceNo: $('f-invno').value.trim(),
+        amount: Number($('f-amount').value),
+        tax: Number($('f-tax').value),
+        date: $('f-date').value,
+        category: $('f-category').value,
+        note: $('f-note').value.trim(),
+        imageId: ocrImageId
+      })
+    });
+    a.className = 'alert ok'; a.textContent = '報支單已送出，已通知主管簽核。';
+    ['f-taxid','f-amount','f-tax','f-date','f-invno','f-note'].forEach(id => $(id).value = '');
+    $('shootZone').innerHTML = '<span class="cam">📷</span><span style="font-weight:600">拍攝發票</span><span class="hint">或點擊從相簿選取</span>';
+    ocrImageId = null;
+  } catch (e) { a.className = 'alert error'; a.textContent = '送出失敗：' + e.message; }
+  btn.disabled = false; btn.textContent = '確認送出';
+};
+
+/* ── 文件核准 ── */
+const dlgApprovalEl = $('dlgApproval');
+let currentApproval = null;
+async function loadApprovals() {
+  const box = $('approvalList');
+  try {
+    const rows = await api('/api/approvals?approverId=' + me.id + '&status=pending');
+    if (!rows.length) { box.innerHTML = '<div class="empty"><div class="ico">📭</div>目前無待核准文件</div>'; return; }
+    box.innerHTML = rows.map(a => `<div class="list-item" style="cursor:pointer" onclick='openApproval(${JSON.stringify(a).replace(/'/g, "&#39;")})'>
+      <div class="t">${esc(a.title)} <span class="badge pending">待簽核</span></div>
+      <div class="s">申請人：${esc(a.requesterName)}｜${new Date(a.createdAt).toLocaleString('zh-TW')}</div>
+    </div>`).join('');
+  } catch (e) { box.innerHTML = `<div class="empty">${esc(e.message)}</div>`; }
+}
+window.openApproval = a => {
+  currentApproval = a;
+  $('dlgTitle').textContent = a.title;
+  $('dlgBody').innerHTML = a.voucher
+    ? `申請人：${esc(a.requesterName)}<br>統編：${esc(a.voucher.taxIdSeller)}｜發票：${esc(a.voucher.invoiceNo || '-')}<br>金額 $${a.voucher.amount.toLocaleString()}（稅額 $${a.voucher.tax.toLocaleString()}）<br>日期：${esc(a.voucher.date)}｜備註：${esc(a.voucher.note || '-')}`
+    : `申請人：${esc(a.requesterName)}<br>申請時間：${new Date(a.createdAt).toLocaleString('zh-TW')}`;
+  $('dlgComment').value = '';
+  dlgApprovalEl.showModal();
+};
+async function decide(action) {
+  try {
+    await api(`/api/approvals/${currentApproval.id}/decision`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action, comment: $('dlgComment').value.trim() })
+    });
+    dlgApprovalEl.close();
+    loadApprovals();
+  } catch (e) { alert('操作失敗：' + e.message); }
+}
+$('dlgApprove').onclick = () => decide('approve');
+$('dlgReject').onclick = () => decide('reject');
+
+/* ── init ── */
+function refreshAll() { loadHome(); loadClockRecords(); loadApprovals(); }
+initUsers().then(refreshAll).catch(e => $('homeKpis').innerHTML = `<div class="kpi" style="grid-column:1/-1"><div class="l">無法連線後端：${esc(e.message)}</div></div>`);
+</script>
+</body>
+</html>

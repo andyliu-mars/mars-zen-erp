@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MarsZen ERP Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "PingFang TC","Microsoft JhengHei",system-ui,sans-serif; background: linear-gradient(150deg,#16202e,#1a3a5c); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; color: #fff; }
+  .wrap { max-width: 720px; width: 100%; text-align: center; }
+  h1 { font-size: 30px; margin-bottom: 8px; }
+  p.sub { color: #9fb3c8; margin-bottom: 36px; font-size: 15px; }
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 560px) { .cards { grid-template-columns: 1fr; } }
+  a.card { display: block; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.14); border-radius: 16px; padding: 30px 22px; text-decoration: none; color: #fff; transition: .2s; }
+  a.card:hover { background: rgba(255,255,255,.14); transform: translateY(-3px); }
+  a.card .ico { font-size: 42px; }
+  a.card h2 { font-size: 19px; margin: 12px 0 6px; }
+  a.card span { color: #9fb3c8; font-size: 13px; line-height: 1.6; display: block; }
+  footer { margin-top: 34px; color: #6d8199; font-size: 12.5px; line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MarsZen ERP</h1>
+  <p class="sub">火星禪意科技｜Demo 版（後端由瀏覽器模擬，資料儲存於 localStorage）</p>
+  <div class="cards">
+    <a class="card" href="app.html">
+      <div class="ico">📱</div>
+      <h2>Mobile App 端</h2>
+      <span>人事打卡（GPS/Wi-Fi）<br>發票 OCR 費用報支<br>文件簽核</span>
+    </a>
+    <a class="card" href="erp.html">
+      <div class="ico">🖥️</div>
+      <h2>Web ERP 端</h2>
+      <span>營運財務儀表板・人事薪資<br>憑證處理與影像檢視<br>稅務媒體檔匯出</span>
+    </a>
+  </div>
+  <footer>App 端建議以手機瀏覽，或用開發者工具切換行動裝置檢視。<br>簽核功能請在 App 端右上角切換為「陳雅婷（財務主管）」。</footer>
+</div>
+</body>
+</html>

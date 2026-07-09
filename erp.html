@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MarsZen Web ERP</title>
+<script src="mock-api.js"></script>
+<style>
+  /* Bigcapital 風格後台佈局 */
+  :root {
+    --sidebar: #1b2430; --sidebar-hover: #263243; --primary: #0065cc; --primary-l: #eaf3fd;
+    --bg: #f5f7fa; --card: #fff; --text: #202834; --muted: #75818f; --border: #e2e7ed;
+    --success: #17915a; --danger: #cf4242; --warn: #c98410;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "PingFang TC","Microsoft JhengHei",system-ui,sans-serif; background: var(--bg); color: var(--text); display: flex; min-height: 100vh; font-size: 14px; }
+  /* 側邊選單 */
+  aside { width: 232px; background: var(--sidebar); color: #cfd8e3; flex-shrink: 0; display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  aside .logo { padding: 18px 20px; font-size: 17px; font-weight: 700; color: #fff; border-bottom: 1px solid rgba(255,255,255,.08); }
+  aside .logo small { display: block; font-size: 11px; font-weight: 400; color: #8494a8; margin-top: 2px; }
+  aside .group { padding: 14px 20px 6px; font-size: 11px; letter-spacing: .08em; color: #6d7c90; }
+  aside a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: #cfd8e3; text-decoration: none; font-size: 13.5px; cursor: pointer; }
+  aside a:hover { background: var(--sidebar-hover); }
+  aside a.active { background: var(--primary); color: #fff; }
+  /* 主內容 */
+  .main { flex: 1; padding: 26px 30px; min-width: 0; }
+  .main h1 { font-size: 20px; margin-bottom: 4px; }
+  .main .sub { color: var(--muted); font-size: 13px; margin-bottom: 20px; }
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 16px; }
+  .card h2 { font-size: 15px; margin-bottom: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px; margin-bottom: 18px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+  .kpi .v { font-size: 24px; font-weight: 700; }
+  .kpi .l { font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .kpi.blue .v { color: var(--primary); } .kpi.green .v { color: var(--success); } .kpi.orange .v { color: var(--warn); }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 13.5px; white-space: nowrap; }
+  th { color: var(--muted); font-weight: 600; font-size: 12.5px; background: #fafbfc; }
+  tr:hover td { background: #fafcff; }
+  .num { text-align: right; font-variant-numeric: tabular-nums; }
+  .badge { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; }
+  .badge.pending { background: #fcf3e2; color: #9a6408; }
+  .badge.booked, .badge.approved, .badge.success, .badge.active { background: #e6f6ee; color: #14764a; }
+  .badge.rejected, .badge.abnormal { background: #fdecec; color: #a83232; }
+  .btn { padding: 8px 16px; border: none; border-radius: 8px; background: var(--primary); color: #fff; font-size: 13.5px; font-weight: 600; cursor: pointer; }
+  .btn:disabled { background: #b5c2d1; cursor: not-allowed; }
+  .btn.outline { background: #fff; color: var(--primary); border: 1.5px solid var(--primary); }
+  .btn.sm { padding: 5px 10px; font-size: 12.5px; }
+  .btn.success { background: var(--success); }
+  .field { margin-bottom: 14px; }
+  .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 5px; }
+  .field input, .field select { width: 100%; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 8px; font-size: 13.5px; background: #fff; }
+  .field input:focus, .field select:focus { outline: none; border-color: var(--primary); }
+  .row { display: flex; gap: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .row .field { flex: 1; min-width: 160px; margin-bottom: 0; }
+  .alert { border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-top: 12px; display: none; }
+  .alert.error { background: #fdecec; color: #a83232; display: block; }
+  .alert.ok { background: #e6f6ee; color: #14764a; display: block; }
+  .alert.warn { background: #fcf3e2; color: #9a6408; display: block; }
+  .empty { text-align: center; color: var(--muted); padding: 40px 0; }
+  .empty .ico { font-size: 34px; margin-bottom: 8px; }
+  .page { display: none; } .page.active { display: block; }
+  .spinner { width: 16px; height: 16px; border: 2.5px solid rgba(255,255,255,.4); border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; display: inline-block; vertical-align: -3px; margin-right: 7px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* 憑證影像檢視器 */
+  .viewer-overlay { position: fixed; inset: 0; background: rgba(12,18,28,.85); z-index: 100; display: none; flex-direction: column; }
+  .viewer-overlay.open { display: flex; }
+  .viewer-toolbar { display: flex; gap: 8px; padding: 12px 16px; justify-content: center; background: rgba(0,0,0,.35); }
+  .viewer-toolbar button { background: rgba(255,255,255,.14); color: #fff; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13.5px; cursor: pointer; }
+  .viewer-toolbar button:hover { background: rgba(255,255,255,.28); }
+  .viewer-stage { flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; }
+  .viewer-stage img { max-width: 90%; max-height: 90%; transition: transform .15s ease; user-select: none; }
+  .viewer-meta { color: #cfd8e3; text-align: center; padding: 10px; font-size: 13px; background: rgba(0,0,0,.35); }
+  .flex-between { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  dialog { border: none; border-radius: 12px; padding: 22px; width: min(92vw, 420px); }
+  dialog::backdrop { background: rgba(15,22,35,.45); }
+  .table-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+
+<aside>
+  <div class="logo">MarsZen ERP<small>火星禪意科技股份有限公司</small></div>
+  <div class="group">總覽</div>
+  <a data-page="dashboard" class="active">📊 營運與財務儀表板</a>
+  <div class="group">人事與薪資</div>
+  <a data-page="hr">👥 人事資料維護</a>
+  <a data-page="payroll">💰 薪資計算與檢視</a>
+  <a data-page="attendance">🕐 出勤紀錄</a>
+  <div class="group">財務管理</div>
+  <a data-page="vouchers">🧾 憑證處理（App 上傳）</a>
+  <a data-page="approvals">✅ 簽核紀錄</a>
+  <div class="group">稅務申報</div>
+  <a data-page="tax">🏛️ 稅務媒體檔匯出</a>
+</aside>
+
+<div class="main">
+  <!-- ─── 儀表板 ─── -->
+  <section class="page active" id="page-dashboard">
+    <h1>營運與財務儀表板</h1>
+    <div class="sub" id="dashDate"></div>
+    <div class="kpis" id="dashKpis"></div>
+    <div class="card">
+      <h2>待辦提醒</h2>
+      <div id="dashTodos"></div>
+    </div>
+  </section>
+
+  <!-- ─── 人事資料 ─── -->
+  <section class="page" id="page-hr">
+    <h1>人事資料維護</h1>
+    <div class="sub">員工基本資料與投保設定</div>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>工號</th><th>姓名</th><th>部門</th><th>職稱</th><th class="num">底薪</th><th class="num">勞保費</th><th class="num">健保費</th><th>到職日</th><th>狀態</th><th></th></tr></thead>
+        <tbody id="hrRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── 薪資 ─── -->
+  <section class="page" id="page-payroll">
+    <h1>薪資計算與檢視</h1>
+    <div class="sub">依月份計算應發、應扣與實發金額</div>
+    <div class="card">
+      <div class="row">
+        <div class="field"><label>薪資月份</label><input type="month" id="payMonth"></div>
+        <button class="btn" onclick="loadPayroll()">計算薪資</button>
+      </div>
+    </div>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>工號</th><th>姓名</th><th>部門</th><th class="num">底薪</th><th class="num">勞保</th><th class="num">健保</th><th class="num">應扣合計</th><th class="num">實發金額</th></tr></thead>
+        <tbody id="payRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── 出勤 ─── -->
+  <section class="page" id="page-attendance">
+    <h1>出勤紀錄</h1>
+    <div class="sub">App 端 GPS / Wi-Fi 打卡紀錄</div>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>員工</th><th>類型</th><th>時間</th><th>GPS</th><th>Wi-Fi</th><th class="num">距離</th><th>結果</th></tr></thead>
+        <tbody id="attRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── 憑證處理 ─── -->
+  <section class="page" id="page-vouchers">
+    <h1>憑證處理</h1>
+    <div class="sub">App 端上傳之發票/憑證接收清單，自動入帳檢核與管理</div>
+    <div class="card table-wrap">
+      <div class="flex-between">
+        <h2 style="margin:0">憑證清單</h2>
+        <select id="vFilter" onchange="loadVouchers()" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:8px">
+          <option value="">全部狀態</option><option value="pending">待簽核</option>
+          <option value="booked">已入帳</option><option value="rejected">已拒絕</option>
+        </select>
+      </div>
+      <table>
+        <thead><tr><th>單號</th><th>申請人</th><th>統編</th><th>發票號碼</th><th class="num">金額</th><th class="num">稅額</th><th>日期</th><th>類別</th><th>狀態</th><th>操作</th></tr></thead>
+        <tbody id="vRows"></tbody>
+      </table>
+      <div class="alert" id="vAlert"></div>
+    </div>
+  </section>
+
+  <!-- ─── 簽核紀錄 ─── -->
+  <section class="page" id="page-approvals">
+    <h1>簽核紀錄</h1>
+    <div class="sub">所有簽核文件與處理狀態</div>
+    <div class="card table-wrap">
+      <table>
+        <thead><tr><th>文件</th><th>申請人</th><th>建立時間</th><th>狀態</th><th>簽核時間</th><th>意見</th></tr></thead>
+        <tbody id="apRows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ─── 稅務申報 ─── -->
+  <section class="page" id="page-tax">
+    <h1>稅務媒體檔匯出</h1>
+    <div class="sub">營業稅（雙月申報）與營所稅（每年 5 月申報）媒體檔產出與下載</div>
+    <div class="card">
+      <div class="row">
+        <div class="field">
+          <label>稅務類型</label>
+          <select id="taxType" onchange="onTaxTypeChange()">
+            <option value="business">營業稅（雙月）</option>
+            <option value="income">營所稅（年度）</option>
+          </select>
+        </div>
+        <div class="field" id="taxPeriodWrap">
+          <label>申報期別</label>
+          <select id="taxPeriod"></select>
+        </div>
+        <div class="field" id="taxYearWrap" style="display:none">
+          <label>申報年度</label>
+          <select id="taxYear"></select>
+        </div>
+        <button class="btn" id="btnTaxExport" onclick="exportTax()">產出並下載媒體檔</button>
+      </div>
+      <div class="alert" id="taxAlert"></div>
+    </div>
+    <div class="card">
+      <h2>申報說明</h2>
+      <p style="font-size:13px;color:var(--muted);line-height:1.8">
+        營業稅採雙月申報（1-2 月、3-4 月、5-6 月、7-8 月、9-10 月、11-12 月），媒體檔含銷項（格式 31）、進項（格式 25）與申報主檔（格式 40）。
+        營所稅為年度申報，於每年 5 月申報前一年度，媒體檔含年度損益主檔（格式 50）與收入/費用明細（格式 51/52）。
+        僅「已入帳」之進項憑證會列入媒體檔。
+      </p>
+    </div>
+  </section>
+</div>
+
+<!-- 憑證影像檢視器 -->
+<div class="viewer-overlay" id="viewer">
+  <div class="viewer-toolbar">
+    <button onclick="viewerZoom(0.25)">＋ 放大</button>
+    <button onclick="viewerZoom(-0.25)">－ 縮小</button>
+    <button onclick="viewerRotate()">↻ 旋轉</button>
+    <button onclick="viewerReset()">重設</button>
+    <button onclick="closeViewer()">✕ 關閉</button>
+  </div>
+  <div class="viewer-stage"><img id="viewerImg" alt="憑證影像"></div>
+  <div class="viewer-meta" id="viewerMeta"></div>
+</div>
+
+<!-- 員工編輯 -->
+<dialog id="dlgEmp">
+  <h3 style="margin-bottom:14px">編輯員工資料</h3>
+  <div class="field"><label>姓名</label><input id="e-name"></div>
+  <div class="row" style="margin-bottom:14px">
+    <div class="field"><label>部門</label><input id="e-dept"></div>
+    <div class="field"><label>職稱</label><input id="e-title"></div>
+  </div>
+  <div class="row" style="margin-bottom:14px">
+    <div class="field"><label>底薪</label><input id="e-salary" type="number"></div>
+    <div class="field"><label>勞保費</label><input id="e-labor" type="number"></div>
+    <div class="field"><label>健保費</label><input id="e-health" type="number"></div>
+  </div>
+  <div class="field"><label>狀態</label><select id="e-status"><option value="active">在職</option><option value="inactive">離職</option></select></div>
+  <div style="display:flex;gap:10px;justify-content:flex-end">
+    <button class="btn outline" onclick="dlgEmp.close()">取消</button>
+    <button class="btn" id="btnSaveEmp">儲存</button>
+  </div>
+</dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const api = async (url, opt) => {
+  const r = await fetch(url, opt);
+  const j = await r.json().catch(() => ({ success: false, message: '伺服器回應異常' }));
+  if (!r.ok || !j.success) throw new Error(j.message || '請求失敗');
+  return j.data;
+};
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const money = n => '$' + Number(n).toLocaleString();
+const stTxt = { pending: '待簽核', booked: '已入帳', rejected: '已拒絕', approved: '已核准', success: '正常', abnormal: '異常', active: '在職', inactive: '離職' };
+const badge = s => `<span class="badge ${s}">${stTxt[s] || s}</span>`;
+
+/* ── 選單導覽 ── */
+document.querySelectorAll('aside a').forEach(a => a.onclick = () => {
+  document.querySelectorAll('aside a').forEach(x => x.classList.remove('active'));
+  a.classList.add('active');
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  $('page-' + a.dataset.page).classList.add('active');
+  loaders[a.dataset.page] && loaders[a.dataset.page]();
+});
+
+/* ── 儀表板 ── */
+async function loadDashboard() {
+  $('dashDate').textContent = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' });
+  try {
+    const s = await api('/api/dashboard/summary');
+    $('dashKpis').innerHTML = `
+      <div class="kpi green"><div class="v">${money(s.monthSales)}</div><div class="l">本月營業收入</div></div>
+      <div class="kpi orange"><div class="v">${money(s.monthExpense)}</div><div class="l">本月費用報支</div></div>
+      <div class="kpi blue"><div class="v">${money(s.monthPayroll)}</div><div class="l">本月薪資總額</div></div>
+      <div class="kpi"><div class="v">${s.activeEmployees}</div><div class="l">在職員工</div></div>
+      <div class="kpi orange"><div class="v">${s.pendingApprovals}</div><div class="l">待簽核文件</div></div>
+      <div class="kpi orange"><div class="v">${s.pendingVouchers}</div><div class="l">待入帳憑證</div></div>`;
+    $('dashTodos').innerHTML = (s.pendingApprovals || s.pendingVouchers)
+      ? `<p style="line-height:2">${s.pendingApprovals ? `🔸 有 <b>${s.pendingApprovals}</b> 份文件待簽核（App 端或簽核紀錄頁處理）<br>` : ''}${s.pendingVouchers ? `🔸 有 <b>${s.pendingVouchers}</b> 張憑證待入帳（至「憑證處理」檢核）` : ''}</p>`
+      : '<div class="empty"><div class="ico">🎉</div>目前沒有待辦事項</div>';
+  } catch (e) { $('dashKpis').innerHTML = `<div class="kpi"><div class="l">無法連線後端：${esc(e.message)}</div></div>`; }
+}
+
+/* ── 人事 ── */
+let empCache = [];
+async function loadHr() {
+  empCache = await api('/api/hr/employees');
+  $('hrRows').innerHTML = empCache.map(e => `<tr>
+    <td>${e.empNo}</td><td>${esc(e.name)}</td><td>${esc(e.dept)}</td><td>${esc(e.title)}</td>
+    <td class="num">${money(e.baseSalary)}</td><td class="num">${money(e.laborIns)}</td><td class="num">${money(e.healthIns)}</td>
+    <td>${e.onboard}</td><td>${badge(e.status)}</td>
+    <td><button class="btn sm outline" onclick="editEmp(${e.id})">編輯</button></td>
+  </tr>`).join('');
+}
+const dlgEmp = $('dlgEmp');
+let editingId = null;
+window.editEmp = id => {
+  const e = empCache.find(x => x.id === id);
+  editingId = id;
+  $('e-name').value = e.name; $('e-dept').value = e.dept; $('e-title').value = e.title;
+  $('e-salary').value = e.baseSalary; $('e-labor').value = e.laborIns; $('e-health').value = e.healthIns;
+  $('e-status').value = e.status;
+  dlgEmp.showModal();
+};
+$('btnSaveEmp').onclick = async () => {
+  try {
+    await api('/api/hr/employees/' + editingId, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: $('e-name').value, dept: $('e-dept').value, title: $('e-title').value,
+        baseSalary: Number($('e-salary').value), laborIns: Number($('e-labor').value),
+        healthIns: Number($('e-health').value), status: $('e-status').value
+      })
+    });
+    dlgEmp.close(); loadHr();
+  } catch (e) { alert('儲存失敗：' + e.message); }
+};
+
+/* ── 薪資 ── */
+async function loadPayroll() {
+  const m = $('payMonth').value || new Date().toISOString().slice(0, 7);
+  $('payMonth').value = m;
+  const rows = await api('/api/payroll?month=' + m);
+  $('payRows').innerHTML = rows.length ? rows.map(r => `<tr>
+    <td>${r.empNo}</td><td>${esc(r.name)}</td><td>${esc(r.dept)}</td>
+    <td class="num">${money(r.baseSalary)}</td><td class="num">${money(r.laborIns)}</td><td class="num">${money(r.healthIns)}</td>
+    <td class="num">${money(r.deductions)}</td><td class="num"><b>${money(r.net)}</b></td>
+  </tr>`).join('') : '<tr><td colspan="8"><div class="empty">無薪資資料</div></td></tr>';
+}
+
+/* ── 出勤 ── */
+async function loadAttendance() {
+  const rows = await api('/api/attendance/records');
+  $('attRows').innerHTML = rows.length ? rows.map(r => `<tr>
+    <td>${esc(r.employeeName)}</td><td>${r.type === 'in' ? '上班' : '下班'}</td>
+    <td>${new Date(r.timestamp).toLocaleString('zh-TW')}</td>
+    <td>${r.gps ? r.gps.lat + ', ' + r.gps.lng : '-'}</td>
+    <td>${r.wifi ? esc(r.wifi.ssid) : '-'}</td>
+    <td class="num">${r.distanceM != null ? r.distanceM + 'm' : '-'}</td>
+    <td>${badge(r.result)}${r.note ? ` <span style="color:var(--muted);font-size:12px">${esc(r.note)}</span>` : ''}</td>
+  </tr>`).join('') : '<tr><td colspan="7"><div class="empty"><div class="ico">🕐</div>尚無出勤紀錄</div></td></tr>';
+}
+
+/* ── 憑證處理 ── */
+async function loadVouchers() {
+  const f = $('vFilter').value;
+  const rows = await api('/api/finance/vouchers' + (f ? '?status=' + f : ''));
+  $('vRows').innerHTML = rows.length ? rows.map(v => `<tr>
+    <td>${v.docNo}</td><td>${esc(v.employeeName)}</td><td>${v.taxIdSeller}</td><td>${v.invoiceNo || '-'}</td>
+    <td class="num">${money(v.amount)}</td><td class="num">${money(v.tax)}</td>
+    <td>${v.date}</td><td>${esc(v.category)}</td><td>${badge(v.status)}</td>
+    <td style="display:flex;gap:6px">
+      ${v.image ? `<button class="btn sm outline" onclick="openViewer(${v.id}, '${esc(v.docNo)}')">檢視影像</button>` : '<span style="color:var(--muted);font-size:12px">無影像</span>'}
+      ${v.status === 'pending' ? `<button class="btn sm success" onclick="bookVoucher(${v.id})">入帳</button>` : ''}
+    </td>
+  </tr>`).join('') : '<tr><td colspan="10"><div class="empty"><div class="ico">🧾</div>無符合條件的憑證</div></td></tr>';
+}
+window.bookVoucher = async id => {
+  const a = $('vAlert'); a.className = 'alert';
+  try {
+    await api(`/api/finance/vouchers/${id}/book`, { method: 'POST' });
+    a.className = 'alert ok'; a.textContent = '憑證已完成入帳。';
+    loadVouchers();
+  } catch (e) { a.className = 'alert error'; a.textContent = e.message; }
+};
+
+/* ── 影像檢視器（放大/縮小/旋轉） ── */
+let vScale = 1, vRotate = 0;
+window.openViewer = (id, docNo) => {
+  vScale = 1; vRotate = 0;
+  const img = $('viewerImg');
+  img.style.transform = '';
+  img.src = `/api/finance/vouchers/${id}/image?t=` + Date.now();
+  img.onerror = () => { $('viewerMeta').textContent = '影像載入失敗'; };
+  $('viewerMeta').textContent = `憑證 ${docNo}｜滾輪縮放`;
+  $('viewer').classList.add('open');
+};
+function applyViewer() { $('viewerImg').style.transform = `scale(${vScale}) rotate(${vRotate}deg)`; }
+window.viewerZoom = d => { vScale = Math.min(5, Math.max(0.25, vScale + d)); applyViewer(); };
+window.viewerRotate = () => { vRotate = (vRotate + 90) % 360; applyViewer(); };
+window.viewerReset = () => { vScale = 1; vRotate = 0; applyViewer(); };
+window.closeViewer = () => $('viewer').classList.remove('open');
+$('viewer').addEventListener('wheel', e => { e.preventDefault(); viewerZoom(e.deltaY < 0 ? 0.15 : -0.15); }, { passive: false });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeViewer(); });
+
+/* ── 簽核紀錄 ── */
+async function loadApprovals() {
+  const rows = await api('/api/approvals');
+  $('apRows').innerHTML = rows.length ? rows.map(a => `<tr>
+    <td>${esc(a.title)}</td><td>${esc(a.requesterName)}</td>
+    <td>${new Date(a.createdAt).toLocaleString('zh-TW')}</td><td>${badge(a.status)}</td>
+    <td>${a.decidedAt ? new Date(a.decidedAt).toLocaleString('zh-TW') : '-'}</td><td>${esc(a.comment || '-')}</td>
+  </tr>`).join('') : '<tr><td colspan="6"><div class="empty"><div class="ico">📭</div>目前無簽核文件</div></td></tr>';
+}
+
+/* ── 稅務申報 ── */
+function initTaxOptions() {
+  const y = new Date().getFullYear();
+  const periods = [];
+  for (let yy = y; yy >= y - 2; yy--)
+    for (const m of [11, 9, 7, 5, 3, 1])
+      periods.push({ v: `${yy}${String(m).padStart(2, '0')}`, t: `${yy} 年 ${m}-${m + 1} 月` });
+  $('taxPeriod').innerHTML = periods.map(p => `<option value="${p.v}">${p.t}</option>`).join('');
+  $('taxPeriod').value = `${y}${String([11,9,7,5,3,1].find(m => m <= new Date().getMonth() + 1) || 1).padStart(2,'0')}`;
+  $('taxYear').innerHTML = [y - 1, y - 2, y - 3].map(v => `<option>${v}</option>`).join('');
+}
+window.onTaxTypeChange = () => {
+  const biz = $('taxType').value === 'business';
+  $('taxPeriodWrap').style.display = biz ? '' : 'none';
+  $('taxYearWrap').style.display = biz ? 'none' : '';
+};
+window.exportTax = async () => {
+  const btn = $('btnTaxExport'), a = $('taxAlert');
+  a.className = 'alert';
+  const biz = $('taxType').value === 'business';
+  const url = biz
+    ? '/api/tax/business-tax-media?period=' + $('taxPeriod').value
+    : '/api/tax/income-tax-media?year=' + $('taxYear').value;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>媒體檔生成中...';
+  try {
+    const r = await fetch(url);
+    if (!r.ok) {
+      const j = await r.json().catch(() => null);
+      throw new Error(j && j.message ? j.message : '產出失敗');
+    }
+    // 處理 Blob 並觸發瀏覽器下載
+    const blob = await r.blob();
+    const cd = r.headers.get('Content-Disposition') || '';
+    const m = cd.match(/filename="?([^";]+)"?/);
+    const fname = m ? m[1] : (biz ? 'BT401.txt' : 'IT.txt');
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = fname;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(link.href);
+    a.className = 'alert ok'; a.textContent = `媒體檔 ${fname} 已產出並開始下載。`;
+  } catch (e) {
+    a.className = 'alert ' + (e.message.includes('無相關') ? 'warn' : 'error');
+    a.textContent = e.message; // 空狀態：「該期別無相關稅務資料可供匯出」
+  }
+  btn.disabled = false;
+  btn.textContent = '產出並下載媒體檔';
+};
+
+/* ── init ── */
+const loaders = { dashboard: loadDashboard, hr: loadHr, payroll: loadPayroll, attendance: loadAttendance, vouchers: loadVouchers, approvals: loadApprovals };
+initTaxOptions();
+loadDashboard();
+</script>
+</body>
+</html>
