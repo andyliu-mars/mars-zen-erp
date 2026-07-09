@@ -449,4 +449,16 @@ window.exportTax = async () => {
     a.textContent = `媒體檔 ${fname} 已產出並開始下載。` + (isDemo ? '（該期別查無實際帳載資料，內容以示範申報資料產出）' : '');
   } catch (e) {
     a.className = 'alert ' + (e.message.includes('無相關') ? 'warn' : 'error');
-    a.textContent = e.message; // 空狀態：「該期別無相關稅務資料可供
+    a.textContent = e.message; // 空狀態：「該期別無相關稅務資料可供匯出」
+  }
+  btn.disabled = false;
+  btn.textContent = '產出並下載媒體檔';
+};
+
+/* ── init ── */
+const loaders = { dashboard: loadDashboard, hr: loadHr, payroll: loadPayroll, attendance: loadAttendance, vouchers: loadVouchers, approvals: loadApprovals };
+initTaxOptions();
+loadDashboard();
+</script>
+</body>
+</html>
