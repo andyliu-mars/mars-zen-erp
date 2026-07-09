@@ -210,7 +210,7 @@
       <p style="font-size:13px;color:var(--muted);line-height:1.8">
         營業稅採雙月申報（1-2 月、3-4 月、5-6 月、7-8 月、9-10 月、11-12 月），媒體檔含銷項（格式 31）、進項（格式 25）與申報主檔（格式 40）。
         營所稅為年度申報，於每年 5 月申報前一年度，媒體檔含年度損益主檔（格式 50）與收入/費用明細（格式 51/52）。
-        僅「已入帳」之進項憑證會列入媒體檔。
+        僅「已入帳」之進項憑證會列入媒體檔。若選擇之期別查無實際帳載資料，系統將自動以該期別之示範申報資料產出媒體檔（同一期別產出內容固定），供申報流程測試使用。
       </p>
     </div>
   </section>
@@ -437,6 +437,7 @@ window.exportTax = async () => {
     const cd = r.headers.get('Content-Disposition') || '';
     const m = cd.match(/filename="?([^";]+)"?/);
     const fname = m ? m[1] : (biz ? 'BT401.txt' : 'IT.txt');
+    const isDemo = r.headers.get('X-Demo-Data') === '1';
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
     link.download = fname;
@@ -444,19 +445,8 @@ window.exportTax = async () => {
     link.click();
     link.remove();
     URL.revokeObjectURL(link.href);
-    a.className = 'alert ok'; a.textContent = `媒體檔 ${fname} 已產出並開始下載。`;
+    a.className = 'alert ok';
+    a.textContent = `媒體檔 ${fname} 已產出並開始下載。` + (isDemo ? '（該期別查無實際帳載資料，內容以示範申報資料產出）' : '');
   } catch (e) {
     a.className = 'alert ' + (e.message.includes('無相關') ? 'warn' : 'error');
-    a.textContent = e.message; // 空狀態：「該期別無相關稅務資料可供匯出」
-  }
-  btn.disabled = false;
-  btn.textContent = '產出並下載媒體檔';
-};
-
-/* ── init ── */
-const loaders = { dashboard: loadDashboard, hr: loadHr, payroll: loadPayroll, attendance: loadAttendance, vouchers: loadVouchers, approvals: loadApprovals };
-initTaxOptions();
-loadDashboard();
-</script>
-</body>
-</html>
+    a.textContent = e.message; // 空狀態：「該期別無相關稅務資料可供

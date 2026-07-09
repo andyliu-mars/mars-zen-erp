@@ -71,28 +71,80 @@
   const padN = (n, len) => String(Math.round(Number(n) || 0)).padStart(len, '0').slice(-len);
   const rocDate = iso => { const [y, m, d] = iso.split('-'); return String(Number(y) - 1911).padStart(3, '0') + m + d; };
 
+  /* ── 示範資料產生（查無實際帳載資料時使用，同一期別產出結果固定） ── */
+  function seededRand(seedStr) {
+    let h = 2166136261;
+    for (const c of seedStr) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); }
+    return () => {
+      h = Math.imul(h ^ (h >>> 15), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      h ^= h >>> 16;
+      return (h >>> 0) / 4294967296;
+    };
+  }
+  const DEMO_BUYERS = ['16003518', '84149961', '28860904', '53212539', '70759028'];
+  const DEMO_SELLERS_TAX = ['22099131', '04541302', '96979933', '23060248', '80333992'];
+  const DEMO_DESCS = ['軟體開發服務', '系統維護費', '顧問服務', '教育訓練', '授權費'];
+  const DEMO_CATS = ['交通費', '文具用品', '交際費', '郵電費', '水電瓦斯費'];
+  const demoInvNo = r => String.fromCharCode(65 + Math.floor(r() * 26)) + String.fromCharCode(65 + Math.floor(r() * 26)) + String(10000000 + Math.floor(r() * 89999999));
+  const demoDay = (r, y, m) => `${y}-${String(m).padStart(2, '0')}-${String(1 + Math.floor(r() * 28)).padStart(2, '0')}`;
+  function demoBusinessData(y, m1) {
+    const r = seededRand('bt' + y + m1);
+    const sales = [], purchases = [];
+    const nS = 3 + Math.floor(r() * 3), nP = 2 + Math.floor(r() * 3);
+    for (let i = 0; i < nS; i++) {
+      const amount = (20 + Math.floor(r() * 300)) * 1000;
+      sales.push({ invoiceNo: demoInvNo(r), buyerTaxId: DEMO_BUYERS[Math.floor(r() * DEMO_BUYERS.length)], amount, tax: Math.round(amount * 0.05), date: demoDay(r, y, m1 + Math.floor(r() * 2)), desc: DEMO_DESCS[Math.floor(r() * DEMO_DESCS.length)] });
+    }
+    for (let i = 0; i < nP; i++) {
+      const amount = (5 + Math.floor(r() * 80)) * 100;
+      purchases.push({ invoiceNo: demoInvNo(r), taxIdSeller: DEMO_SELLERS_TAX[Math.floor(r() * DEMO_SELLERS_TAX.length)], amount, tax: Math.round(amount * 0.05), date: demoDay(r, y, m1 + Math.floor(r() * 2)), category: DEMO_CATS[Math.floor(r() * DEMO_CATS.length)] });
+    }
+    return { sales, purchases };
+  }
+  function demoIncomeData(year) {
+    const y = Number(year), sales = [], purchases = [];
+    for (let m1 = 1; m1 <= 11; m1 += 2) {
+      const g = demoBusinessData(y, m1);
+      sales.push(...g.sales);
+      purchases.push(...g.purchases);
+    }
+    return { sales, purchases };
+  }
+
   function businessTaxMedia(d, period) {
     const y = Number(period.slice(0, 4)), m1 = Number(period.slice(4, 6));
     const months = [`${y}-${String(m1).padStart(2, '0')}`, `${y}-${String(m1 + 1).padStart(2, '0')}`];
     const rocPeriod = String(y - 1911).padStart(3, '0') + String(m1).padStart(2, '0');
     const myTaxId = d.company.taxId, lines = [];
-    for (const s of d.sales.filter(s => months.some(mm => s.date.startsWith(mm))))
+    // 實際帳載資料；查無資料時改用該期別之示範資料
+    let ts = d.sales.filter(s => months.some(mm => s.date.startsWith(mm)));
+    let ti = d.vouchers.filter(v => v.status === 'booked' && months.some(mm => v.date.startsWith(mm)));
+    let demo = false;
+    if (!ts.length && !ti.length) {
+      const g = demoBusinessData(y, m1);
+      ts = g.sales; ti = g.purchases; demo = true;
+    }
+    for (const s of ts)
       lines.push(pad('31', 2) + pad(myTaxId, 8) + pad(rocPeriod, 5) + pad(s.buyerTaxId, 8) + pad(s.invoiceNo, 10) + '1' + padN(s.amount, 12) + padN(s.tax, 10) + pad('', 24));
-    for (const v of d.vouchers.filter(v => v.status === 'booked' && months.some(mm => v.date.startsWith(mm))))
+    for (const v of ti)
       lines.push(pad('25', 2) + pad(myTaxId, 8) + pad(rocPeriod, 5) + pad(v.taxIdSeller, 8) + pad(v.invoiceNo || '', 10) + '1' + padN(v.amount, 12) + padN(v.tax, 10) + pad('', 24));
-    if (!lines.length) return { records: 0 };
-    const ts = d.sales.filter(s => months.some(mm => s.date.startsWith(mm)));
-    const ti = d.vouchers.filter(v => v.status === 'booked' && months.some(mm => v.date.startsWith(mm)));
     const oA = ts.reduce((s, x) => s + x.amount, 0), oT = ts.reduce((s, x) => s + x.tax, 0);
     const iA = ti.reduce((s, x) => s + x.amount, 0), iT = ti.reduce((s, x) => s + x.tax, 0);
     const header = pad('40', 2) + pad(myTaxId, 8) + pad(rocPeriod, 5) + padN(oA, 12) + padN(oT, 10) + padN(iA, 12) + padN(iT, 10) + padN(oT - iT, 10) + pad('', 11);
-    return { records: lines.length, content: [header, ...lines].join('\r\n') + '\r\n' };
+    return { records: lines.length, demo, content: [header, ...lines].join('\r\n') + '\r\n' };
   }
 
   function incomeTaxMedia(d, year) {
-    const sales = d.sales.filter(s => s.date.startsWith(year));
-    const vouchers = d.vouchers.filter(v => v.status === 'booked' && v.date.startsWith(year));
-    if (!sales.length && !vouchers.length) return { records: 0 };
+    let sales = d.sales.filter(s => s.date.startsWith(year));
+    let vouchers = d.vouchers.filter(v => v.status === 'booked' && v.date.startsWith(year));
+    let demo = false;
+    if (!sales.length && !vouchers.length) {
+      const g = demoIncomeData(year);
+      sales = g.sales;
+      vouchers = g.purchases;
+      demo = true;
+    }
     const revenue = sales.reduce((s, x) => s + x.amount, 0);
     const expense = vouchers.reduce((s, x) => s + x.amount, 0);
     const payroll = d.employees.filter(e => e.status === 'active').reduce((s, e) => s + e.baseSalary * 12, 0);
@@ -101,7 +153,7 @@
     const out = [pad('50', 2) + pad(d.company.taxId, 8) + pad(rocYear, 3) + padN(revenue, 14) + padN(expense, 14) + padN(payroll, 14) + padN(taxable, 14) + padN(taxDue, 14) + pad('', 17)];
     for (const s of sales) out.push(pad('51', 2) + pad(d.company.taxId, 8) + pad(rocYear, 3) + pad(s.invoiceNo, 10) + pad(rocDate(s.date), 7) + padN(s.amount, 14) + padN(s.tax, 10) + pad(s.desc, 46));
     for (const v of vouchers) out.push(pad('52', 2) + pad(d.company.taxId, 8) + pad(rocYear, 3) + pad(v.invoiceNo || '', 10) + pad(rocDate(v.date), 7) + padN(v.amount, 14) + padN(v.tax, 10) + pad(v.category, 46));
-    return { records: out.length, content: out.join('\r\n') + '\r\n' };
+    return { records: out.length, demo, content: out.join('\r\n') + '\r\n' };
   }
 
   /* ── 圖片壓縮為 dataURL ── */
@@ -279,7 +331,7 @@
       await sleep(800);
       const out = businessTaxMedia(d, period);
       if (!out.records) return J('該期別無相關稅務資料可供匯出', 404);
-      return new Response(out.content, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': `attachment; filename="BT401_${period}.txt"` } });
+      return new Response(out.content, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': `attachment; filename="BT401_${period}.txt"`, 'X-Demo-Data': out.demo ? '1' : '0' } });
     }
     if (p === '/api/tax/income-tax-media') {
       const year = q.get('year') || '';
@@ -287,7 +339,7 @@
       await sleep(800);
       const out = incomeTaxMedia(d, year);
       if (!out.records) return J('該期別無相關稅務資料可供匯出', 404);
-      return new Response(out.content, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': `attachment; filename="IT_${year}.txt"` } });
+      return new Response(out.content, { status: 200, headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': `attachment; filename="IT_${year}.txt"`, 'X-Demo-Data': out.demo ? '1' : '0' } });
     }
 
     return J('Not found (mock)', 404);
